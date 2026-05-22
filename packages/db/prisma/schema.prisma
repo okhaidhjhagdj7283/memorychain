@@ -6,79 +6,68 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 // ==================== USERS ====================
 model User {
-  id           String   @id @default(cuid())
-  walletAddress String  @unique @map("wallet_address")
-  displayName  String?  @map("display_name")
-  avatarUrl    String?  @map("avatar_url")
-  bio          String?
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  walletAddress String   @unique @map("wallet_address")
+  displayName   String?  @map("display_name")
+  avatarUrl     String?  @map("avatar_url")
+  bio           String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  ownedFamilies    Family[]       @relation("FamilyOwner")
+  ownedFamilies     Family[]          @relation("FamilyOwner")
   familyMemberships FamilyMember[]
-  uploadedMemories Memory[]
-  comments         Comment[]
-  inheritanceRules InheritanceRule[] @relation("InheritanceOwner")
-  heirRules        InheritanceRule[] @relation("InheritanceHeir")
-  activityLogs     ActivityLog[]
+  uploadedMemories  Memory[]
+  comments          Comment[]
+  inheritanceRules  InheritanceRule[] @relation("InheritanceOwner")
+  heirRules         InheritanceRule[] @relation("InheritanceHeir")
+  activityLogs      ActivityLog[]
 
   @@map("users")
 }
 
 // ==================== FAMILIES ====================
-enum PrivacyMode {
-  PRIVATE
-  FAMILY_ONLY
-  PUBLIC
-}
-
+// PrivacyMode: PRIVATE | FAMILY_ONLY | PUBLIC
 model Family {
-  id             String      @id @default(cuid())
-  ownerWallet    String      @map("owner_wallet")
-  familyName     String      @map("family_name")
+  id             String   @id @default(cuid())
+  ownerWallet    String   @map("owner_wallet")
+  familyName     String   @map("family_name")
   description    String?
-  coverImageBlob String?     @map("cover_image_blob")
-  privacyMode    PrivacyMode @default(PRIVATE) @map("privacy_mode")
-  contractTxHash String?     @map("contract_tx_hash")
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
+  coverImageBlob String?  @map("cover_image_blob")
+  privacyMode    String   @default("PRIVATE") @map("privacy_mode")
+  contractTxHash String?  @map("contract_tx_hash")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  owner           User              @relation("FamilyOwner", fields: [ownerWallet], references: [walletAddress])
-  members         FamilyMember[]
-  memories        Memory[]
+  owner            User              @relation("FamilyOwner", fields: [ownerWallet], references: [walletAddress])
+  members          FamilyMember[]
+  memories         Memory[]
   inheritanceRules InheritanceRule[]
-  activityLogs    ActivityLog[]
+  activityLogs     ActivityLog[]
 
   @@map("families")
 }
 
 // ==================== FAMILY MEMBERS ====================
-enum MemberRole {
-  OWNER
-  EDITOR
-  VIEWER
-  HEIR
-}
-
+// MemberRole: OWNER | EDITOR | VIEWER | HEIR
 model FamilyMember {
-  id            String     @id @default(cuid())
-  familyId      String     @map("family_id")
-  walletAddress String     @map("wallet_address")
+  id            String   @id @default(cuid())
+  familyId      String   @map("family_id")
+  walletAddress String   @map("wallet_address")
   name          String?
-  role          MemberRole @default(VIEWER)
-  relation      String?    // "Bố", "Mẹ", "Con trai", etc.
-  avatarBlob    String?    @map("avatar_blob")
-  birthYear     Int?       @map("birth_year")
-  deathYear     Int?       @map("death_year")
+  role          String   @default("VIEWER")
+  relation      String?  // "Bố", "Mẹ", "Con trai", etc.
+  avatarBlob    String?  @map("avatar_blob")
+  birthYear     Int?     @map("birth_year")
+  deathYear     Int?     @map("death_year")
   bio           String?
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
   user   User?  @relation(fields: [walletAddress], references: [walletAddress])
@@ -88,46 +77,33 @@ model FamilyMember {
 }
 
 // ==================== MEMORIES ====================
-enum MemoryType {
-  PHOTO
-  VIDEO
-  AUDIO
-  DOCUMENT
-  LETTER
-  STORY
-}
-
-enum VisibilityMode {
-  PRIVATE
-  FAMILY
-  PUBLIC
-}
-
+// MemoryType: PHOTO | VIDEO | AUDIO | DOCUMENT | LETTER | STORY
+// VisibilityMode: PRIVATE | FAMILY | PUBLIC
 model Memory {
-  id              String         @id @default(cuid())
-  familyId        String         @map("family_id")
-  uploaderWallet  String         @map("uploader_wallet")
-  title           String
-  description     String?
-  memoryType      MemoryType     @map("memory_type")
-  eventDate       DateTime?      @map("event_date")
-  locationText    String?        @map("location_text")
-  isEncrypted     Boolean        @default(false) @map("is_encrypted")
-  encryptedKey    String?        @map("encrypted_key")  // AES key encrypted
-  encryptedIv     String?        @map("encrypted_iv")
-  visibility      VisibilityMode @default(PRIVATE)
-  shelbyBlobName  String?        @map("shelby_blob_name")
-  shelbyBlobHash  String?        @map("shelby_blob_hash")
-  fileMimeType    String?        @map("file_mime_type")
-  fileSize        BigInt?        @map("file_size")
-  thumbnailBlob   String?        @map("thumbnail_blob")
-  txHash          String?        @map("tx_hash")
-  tags            String[]
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  id             String   @id @default(cuid())
+  familyId       String   @map("family_id")
+  uploaderWallet String   @map("uploader_wallet")
+  title          String
+  description    String?
+  memoryType     String   @map("memory_type")
+  eventDate      DateTime? @map("event_date")
+  locationText   String?  @map("location_text")
+  isEncrypted    Boolean  @default(false) @map("is_encrypted")
+  encryptedKey   String?  @map("encrypted_key") // AES key encrypted
+  encryptedIv    String?  @map("encrypted_iv")
+  visibility     String   @default("PRIVATE")
+  shelbyBlobName String?  @map("shelby_blob_name")
+  shelbyBlobHash String?  @map("shelby_blob_hash")
+  fileMimeType   String?  @map("file_mime_type")
+  fileSize       Int?     @map("file_size")
+  thumbnailBlob  String?  @map("thumbnail_blob")
+  txHash         String?  @map("tx_hash")
+  tags           String   @default("[]") // JSON-encoded array
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  family   Family  @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  uploader User    @relation(fields: [uploaderWallet], references: [walletAddress])
+  family   Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  uploader User      @relation(fields: [uploaderWallet], references: [walletAddress])
   comments Comment[]
 
   @@map("memories")
@@ -148,31 +124,20 @@ model Comment {
 }
 
 // ==================== INHERITANCE RULES ====================
-enum TriggerType {
-  MANUAL_RELEASE
-  TIME_LOCK
-  MULTI_MEMBER_APPROVAL
-}
-
-enum InheritanceStatus {
-  PENDING
-  ACTIVE
-  CLAIMED
-  REVOKED
-}
-
+// TriggerType: MANUAL_RELEASE | TIME_LOCK | MULTI_MEMBER_APPROVAL
+// InheritanceStatus: PENDING | ACTIVE | CLAIMED | REVOKED
 model InheritanceRule {
-  id           String            @id @default(cuid())
-  familyId     String            @map("family_id")
-  ownerWallet  String            @map("owner_wallet")
-  heirWallet   String            @map("heir_wallet")
-  triggerType  TriggerType       @map("trigger_type")
-  unlockYear   Int?              @map("unlock_year")  // for TIME_LOCK
-  approvalCount Int?             @map("approval_count") // for MULTI_MEMBER_APPROVAL
-  status       InheritanceStatus @default(PENDING)
-  note         String?
-  createdAt    DateTime          @default(now()) @map("created_at")
-  updatedAt    DateTime          @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  familyId      String   @map("family_id")
+  ownerWallet   String   @map("owner_wallet")
+  heirWallet    String   @map("heir_wallet")
+  triggerType   String   @map("trigger_type")
+  unlockYear    Int?     @map("unlock_year")    // for TIME_LOCK
+  approvalCount Int?     @map("approval_count") // for MULTI_MEMBER_APPROVAL
+  status        String   @default("PENDING")
+  note          String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
   owner  User   @relation("InheritanceOwner", fields: [ownerWallet], references: [walletAddress])
@@ -189,7 +154,7 @@ model ActivityLog {
   action        String
   resourceId    String?  @map("resource_id")
   resourceType  String?  @map("resource_type")
-  metadata      Json?
+  metadata      String?  // JSON-encoded object
   createdAt     DateTime @default(now()) @map("created_at")
 
   user   User    @relation(fields: [walletAddress], references: [walletAddress])
@@ -197,3 +162,4 @@ model ActivityLog {
 
   @@map("activity_logs")
 }
+
