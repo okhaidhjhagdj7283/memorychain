@@ -17,6 +17,7 @@
 - [Biến môi trường](#-biến-môi-trường)
 - [Smart Contract (Move)](#-smart-contract-move)
 - [Luồng hoạt động](#-luồng-hoạt-động)
+- [Ghi chú kỹ thuật & Lỗi đã fix](#-ghi-chú-kỹ-thuật--lỗi-đã-fix)
 
 ---
 
@@ -29,6 +30,8 @@
 - 🔐 **Mã hóa đầu cuối (AES)** để bảo vệ ký ức riêng tư
 - ⛓️ **Ghi nhận lên Aptos Blockchain** để bất biến và minh bạch
 - 📜 **Thiết lập di chúc thừa kế** — tự động chuyển giao quyền truy cập cho thế hệ sau
+
+> **Database**: Dự án dùng **100% SQLite** — không cần cài đặt bất kỳ database server nào (PostgreSQL, MySQL, etc.). File `dev.db` được tự động tạo khi chạy `prisma db push`.
 
 ---
 
@@ -46,11 +49,11 @@
 │  /api/auth  /api/families  /api/memories                 │
 │  /api/blob  /api/inheritance                             │
 │                                                         │
-│  ┌──────────────┐    ┌──────────────────────────────┐   │
-│  │  SQLite DB   │    │     Shelby Blob Storage       │   │
-│  │  (Prisma 5)  │    │  (file lớn: ảnh/video/doc)   │   │
-│  │  dev.db      │    │  sdk: @shelby-protocol/sdk    │   │
-│  └──────────────┘    └──────────────────────────────┘   │
+│  ┌──────────────────────┐    ┌────────────────────────┐  │
+│  │  SQLite (dev.db)     │    │  Shelby Blob Storage   │  │
+│  │  Prisma ORM 5.22     │    │  ảnh / video / file    │  │
+│  │  packages/db/prisma/ │    │  @shelby-protocol/sdk  │  │
+│  └──────────────────────┘    └────────────────────────┘  │
 │                                                         │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │          Aptos Blockchain (Testnet)               │   │
@@ -70,7 +73,7 @@
 | UI Framework | React | 19.0.0 |
 | Styling | TailwindCSS | 3.4.x |
 | Animation | Framer Motion | 11.x |
-| **Database** | **SQLite (via Prisma)** | **5.22.0** |
+| **Database** | **SQLite** (100%, không cần server) | — |
 | ORM | Prisma Client | 5.22.0 |
 | Blockchain | Aptos (Testnet) | SDK 1.30.x |
 | Blob Storage | Shelby Protocol | SDK 0.3.1 |
@@ -79,6 +82,7 @@
 | Forms | React Hook Form | 7.x |
 | Icons | Lucide React | 0.460.x |
 | Smart Contract | Move Language | — |
+| Package Manager | pnpm (workspace monorepo) | 8.x+ |
 
 ---
 
@@ -87,58 +91,63 @@
 ```
 memorychain/
 ├── apps/
-│   └── web/                        # Next.js web application
+│   └── web/                          # Next.js web application
 │       ├── app/
 │       │   ├── api/
-│       │   │   ├── auth/           # Xác thực bằng ví Aptos + JWT
-│       │   │   ├── blob/           # Upload/Download file qua Shelby
-│       │   │   ├── families/       # CRUD gia đình & thành viên
-│       │   │   ├── memories/       # CRUD ký ức & mã hóa
-│       │   │   └── inheritance/    # Quy tắc thừa kế
-│       │   ├── dashboard/          # Trang chính sau đăng nhập
-│       │   ├── explore/            # Khám phá ký ức public
-│       │   ├── family/             # Quản lý gia đình
-│       │   ├── login/              # Trang kết nối ví
-│       │   ├── layout.tsx          # Root layout
-│       │   └── page.tsx            # Landing page
+│       │   │   ├── auth/             # Xác thực bằng ví Aptos + JWT
+│       │   │   ├── blob/             # Upload/Download file qua Shelby
+│       │   │   ├── families/         # CRUD gia đình & thành viên
+│       │   │   ├── memories/         # CRUD ký ức & mã hóa
+│       │   │   └── inheritance/      # Quy tắc thừa kế
+│       │   ├── dashboard/            # Trang chính sau đăng nhập
+│       │   ├── explore/              # Khám phá ký ức public
+│       │   ├── family/               # Quản lý gia đình
+│       │   ├── login/                # Trang kết nối ví
+│       │   ├── layout.tsx
+│       │   └── page.tsx              # Landing page
 │       ├── components/
-│       │   ├── family/             # Components quản lý gia đình
-│       │   ├── layout/             # Header, Sidebar, Navigation
-│       │   ├── memory/             # Upload ký ức, hiển thị gallery
-│       │   ├── ui/                 # Button, Modal, Card, Toast...
-│       │   └── WalletButton.tsx    # Kết nối ví Aptos
-│       ├── hooks/                  # Custom React hooks
-│       ├── lib/                    # Utilities, Prisma client
-│       └── types/                  # TypeScript definitions
+│       │   ├── family/               # Components quản lý gia đình
+│       │   ├── layout/               # Header, Sidebar, Navigation
+│       │   ├── memory/               # Upload ký ức, gallery
+│       │   ├── ui/                   # Button, Modal, Card, Toast...
+│       │   └── WalletButton.tsx
+│       ├── hooks/                    # Custom React hooks
+│       ├── lib/                      # Utilities, helpers
+│       ├── types/                    # TypeScript definitions
+│       ├── .env.local                # Biến môi trường (copy từ root .env)
+│       └── next.config.js
 │
 ├── packages/
-│   └── db/                         # Database package (shared)
+│   └── db/                           # Shared database package (@memorychain/db)
 │       ├── prisma/
-│       │   └── schema.prisma       # Định nghĩa toàn bộ schema DB
-│       └── src/
-│           └── index.ts            # Export Prisma client
+│       │   ├── schema.prisma         # Schema SQLite (provider = "sqlite")
+│       │   └── dev.db                # SQLite file — tự tạo sau prisma db push
+│       ├── src/
+│       │   └── index.ts              # Export PrismaClient
+│       └── package.json              # name: "@memorychain/db", exports: "."
 │
 ├── contracts/
-│   └── memory_chain/               # Aptos Move Smart Contract
+│   └── memory_chain/                 # Aptos Move Smart Contract
 │       ├── Move.toml
 │       └── sources/
-│           └── memory_chain.move   # Logic on-chain
+│           └── memory_chain.move
 │
-├── .env                            # Biến môi trường (không commit)
-├── .env.example                    # Template biến môi trường
-├── docker-compose.yml              # (Tùy chọn) PostgreSQL + pgAdmin
-├── package.json                    # Root workspace config
-├── pnpm-workspace.yaml
-└── start.sh                        # Script khởi động nhanh
+├── .env                              # Biến môi trường root (không commit)
+├── .env.example                      # Template — DATABASE_URL dùng SQLite
+├── .npmrc                            # pnpm: link-workspace-packages=true
+├── docker-compose.yml                # Prisma Studio (tùy chọn, xem data GUI)
+├── package.json                      # Root workspace scripts
+├── pnpm-workspace.yaml               # Khai báo apps/* và packages/*
+└── start.sh                          # Script khởi động tự động
 ```
 
 ---
 
 ## 🗄️ Schema Cơ Sở Dữ Liệu
 
-Dự án sử dụng **SQLite** (file `packages/db/prisma/dev.db`) quản lý qua **Prisma ORM**.
+Dự án dùng **100% SQLite** — file `packages/db/prisma/dev.db`, quản lý qua **Prisma ORM 5.22**.
 
-> **Lưu ý**: SQLite được chọn cho môi trường development để không cần cài đặt database server. Để production, có thể chuyển sang PostgreSQL bằng cách đổi `provider` trong `schema.prisma`.
+**Không cần cài đặt bất kỳ database server nào.** File `dev.db` được tự động tạo khi chạy `prisma db push`.
 
 ### Sơ đồ quan hệ
 
@@ -168,7 +177,7 @@ User (walletAddress) ──┬──< FamilyMember >──┐
 | `inheritance_rules` | Quy tắc thừa kế tài sản số |
 | `activity_logs` | Lịch sử hoạt động hệ thống |
 
-### Enum (dạng String trong SQLite)
+### Enum (lưu dạng String trong SQLite)
 
 ```
 PrivacyMode:       PRIVATE | FAMILY_ONLY | PUBLIC
@@ -204,14 +213,13 @@ InheritanceStatus: PENDING | ACTIVE | CLAIMED | REVOKED
 
 ## 💻 Yêu Cầu Hệ Thống
 
-| Yêu cầu | Phiên bản tối thiểu |
-|---------|---------------------|
+| Yêu cầu | Phiên bản |
+|---------|-----------|
 | Node.js | 20.x trở lên |
 | pnpm | 8.x trở lên |
-| Hệ điều hành | Linux / macOS / Windows |
+| OS | Linux / macOS / Windows |
 | Ví Aptos | Petra, Pontem, hoặc Martian |
-
-> **SQLite không cần cài đặt thêm** — file database được tự động tạo tại `packages/db/prisma/dev.db`
+| Database server | ❌ Không cần — dùng SQLite |
 
 ---
 
@@ -220,94 +228,83 @@ InheritanceStatus: PENDING | ACTIVE | CLAIMED | REVOKED
 ### Cách 1: Chạy tự động (Khuyến nghị)
 
 ```bash
-# Cấp quyền thực thi và chạy
 chmod +x start.sh
 ./start.sh
 ```
 
-Script sẽ tự động:
-1. Kiểm tra Node.js và cài pnpm nếu thiếu
-2. Cài đặt tất cả dependencies
-3. Đồng bộ schema lên SQLite database
-4. Khởi động Next.js dev server
+Script `start.sh` sẽ tự động:
+1. Kiểm tra Node.js & cài pnpm nếu thiếu
+2. Tạo file `.env` (nếu chưa có) với `DATABASE_URL` đường dẫn tuyệt đối
+3. Copy `.env` → `apps/web/.env.local`
+4. Cài tất cả dependencies (`pnpm install`)
+5. Generate Prisma Client & tạo `dev.db`
+6. Khởi động Next.js dev server
 
 ---
 
-### Cách 2: Chạy từng bước
+### Cách 2: Thủ công từng bước
 
-#### Bước 1 — Clone & cài đặt
+#### Bước 1 — Clone & cấu hình
 
 ```bash
 git clone <repo-url>
 cd memorychain
-pnpm install
-```
 
-#### Bước 2 — Cấu hình môi trường
-
-```bash
+# Tạo .env từ template
 cp .env.example .env
+cp .env apps/web/.env.local
 ```
 
-Mở file `.env` và chỉnh sửa:
+Mở `.env`, sửa `DATABASE_URL` thành đường dẫn tuyệt đối của máy bạn:
 
 ```env
-# Database (SQLite — không cần thay đổi cho local)
-DATABASE_URL="file:./dev.db"
-
-# Auth
-JWT_SECRET="your-super-secret-jwt-key-change-in-production"
-JWT_EXPIRES_IN="7d"
-
-# Shelby Protocol (Blob Storage)
-SHELBY_RPC_URL="https://api.testnet.shelby.xyz/shelby"
-SHELBY_API_KEY=""
-
-# Aptos Blockchain
-APTOS_NODE_URL="https://api.testnet.aptoslabs.com/v1"
-APTOS_NETWORK="testnet"
-
-# Next.js Public
-NEXT_PUBLIC_SHELBY_RPC_URL="https://api.testnet.shelby.xyz/shelby"
-NEXT_PUBLIC_APTOS_NETWORK="testnet"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
+# Thay /root/memorychain bằng đường dẫn thực tế
+DATABASE_URL="file:/root/memorychain/packages/db/prisma/dev.db"
 ```
 
-#### Bước 3 — Đồng bộ Database
+#### Bước 2 — Cài dependencies
+
+```bash
+pnpm install --no-frozen-lockfile
+```
+
+> ℹ️ File `.npmrc` đã có `link-workspace-packages=true` để pnpm nhận `@memorychain/db` là package nội bộ, không tìm trên npm registry.
+
+#### Bước 3 — Khởi tạo SQLite database
 
 ```bash
 cd packages/db
-npx prisma db push
+DB_PATH="$(pwd)/prisma/dev.db"
+DATABASE_URL="file:${DB_PATH}" npx prisma generate
+DATABASE_URL="file:${DB_PATH}" npx prisma db push
+cd ../..
 ```
 
-Lệnh này sẽ:
-- Tự tạo file `dev.db` nếu chưa có
-- Tạo toàn bộ bảng theo `schema.prisma`
+Thành công khi thấy:
+```
+✔ Your database is now in sync with your Prisma schema.
+```
 
-*(Thành công khi thấy: `✔ Generated Prisma Client`)*
+File `packages/db/prisma/dev.db` được tự động tạo.
 
 #### Bước 4 — Khởi động Web
 
 ```bash
-cd ../../apps/web
-pnpm dev
+cd apps/web && pnpm dev
 ```
 
 Truy cập: **http://localhost:3000** 🎉
 
 ---
 
-### Lệnh hữu ích khác
+### Lệnh hữu ích
 
 ```bash
-# Xem dữ liệu qua Prisma Studio (GUI)
-pnpm db:studio
+# Xem dữ liệu qua Prisma Studio (GUI trình duyệt)
+cd packages/db && DATABASE_URL="file:$(pwd)/prisma/dev.db" npx prisma studio
 
-# Generate lại Prisma Client sau khi sửa schema
+# Generate lại Prisma Client sau khi sửa schema.prisma
 pnpm db:generate
-
-# Chạy migration (nếu dùng PostgreSQL production)
-pnpm db:migrate
 
 # Build production
 pnpm build
@@ -319,29 +316,31 @@ pnpm build
 
 | Biến | Bắt buộc | Mô tả |
 |------|----------|-------|
-| `DATABASE_URL` | ✅ | Đường dẫn SQLite: `file:./dev.db` |
-| `JWT_SECRET` | ✅ | Khóa bí mật để ký JWT token |
-| `JWT_EXPIRES_IN` | ✅ | Thời gian sống của token (vd: `7d`) |
+| `DATABASE_URL` | ✅ | SQLite: `file:/đường/dẫn/tuyệt/đối/dev.db` |
+| `JWT_SECRET` | ✅ | Khóa bí mật ký JWT token |
+| `JWT_EXPIRES_IN` | ✅ | Thời hạn token, vd: `7d` |
 | `SHELBY_RPC_URL` | ✅ | URL Shelby Protocol RPC |
 | `SHELBY_API_KEY` | ⬜ | API key Shelby (nếu cần) |
 | `APTOS_NODE_URL` | ✅ | URL Aptos Full Node |
 | `APTOS_NETWORK` | ✅ | `testnet` hoặc `mainnet` |
 | `NEXT_PUBLIC_SHELBY_RPC_URL` | ✅ | Shelby URL phía client |
 | `NEXT_PUBLIC_APTOS_NETWORK` | ✅ | Aptos network phía client |
-| `NEXT_PUBLIC_APP_URL` | ✅ | URL ứng dụng (vd: `http://localhost:3000`) |
+| `NEXT_PUBLIC_APP_URL` | ✅ | URL app, vd: `http://localhost:3000` |
+
+> ⚠️ **Quan trọng**: `DATABASE_URL` phải dùng **đường dẫn tuyệt đối** (`file:/root/...`), không dùng relative (`file:./dev.db`) vì Prisma có thể chạy từ nhiều thư mục khác nhau.
 
 ---
 
 ## ⛓️ Smart Contract (Move)
 
-Contract được viết bằng **Move Language** và deploy trên **Aptos Testnet**.
+Contract được viết bằng **Move Language**, deploy trên **Aptos Testnet**.
 
 **Vị trí:** `contracts/memory_chain/sources/memory_chain.move`
 
 ### Chức năng chính
 
 - `create_family_record` — Ghi nhận tạo gia đình on-chain
-- `register_memory` — Ghi hash của ký ức (bất biến)
+- `register_memory` — Ghi hash ký ức (bất biến)
 - `set_inheritance_rule` — Thiết lập quy tắc thừa kế
 
 ### Deploy Contract
@@ -350,10 +349,8 @@ Contract được viết bằng **Move Language** và deploy trên **Aptos Testn
 # Cài Aptos CLI
 curl -fsSL "https://aptos.dev/scripts/install_cli.py" | python3
 
-# Init account
 aptos init
 
-# Deploy lên testnet
 cd contracts/memory_chain
 aptos move publish --named-addresses memory_chain=<YOUR_ACCOUNT_ADDRESS>
 ```
@@ -363,18 +360,18 @@ aptos move publish --named-addresses memory_chain=<YOUR_ACCOUNT_ADDRESS>
 ## 🔄 Luồng Hoạt Động
 
 ```
-1. Người dùng kết nối ví Aptos (Petra/Pontem/Martian)
+1. Người dùng kết nối ví Aptos (Petra / Pontem / Martian)
         ↓
-2. Ký message xác thực → Server tạo JWT token
+2. Ký message xác thực → Server cấp JWT token
         ↓
-3. Tạo/tham gia Gia đình (Family)
+3. Tạo / tham gia Gia đình (Family)
         ↓
 4. Upload Ký ức:
    a. File → Shelby Blob Storage (mã hóa AES nếu private)
-   b. Metadata → SQLite Database
-   c. Hash → Aptos Blockchain (on-chain record)
+   b. Metadata → SQLite Database (dev.db)
+   c. Hash → Aptos Blockchain (on-chain, bất biến)
         ↓
-5. Chia sẻ với thành viên gia đình theo phân quyền
+5. Chia sẻ với thành viên theo phân quyền (Owner/Editor/Viewer/Heir)
         ↓
 6. Thiết lập Thừa kế → Smart contract ghi on-chain
         ↓
@@ -383,35 +380,80 @@ aptos move publish --named-addresses memory_chain=<YOUR_ACCOUNT_ADDRESS>
 
 ---
 
-## 🗒️ Ghi Chú Phát Triển
+## 🔧 Ghi Chú Kỹ Thuật & Lỗi Đã Fix
 
-### Chuyển sang PostgreSQL (Production)
+### Fix 1 — ERR_PNPM_FETCH_404 (@memorychain/db)
 
-Nếu muốn dùng PostgreSQL thay SQLite:
+**Triệu chứng:** pnpm tìm `@memorychain/db` trên npm public registry, không thấy.
 
-1. Sửa `packages/db/prisma/schema.prisma`:
-   ```prisma
-   datasource db {
-     provider = "postgresql"  // Đổi từ "sqlite"
-     url      = env("DATABASE_URL")
-   }
-   ```
+**Nguyên nhân:** Thiếu `.npmrc` với config workspace.
 
-2. Cập nhật `DATABASE_URL` trong `.env`:
-   ```env
-   DATABASE_URL="postgresql://user:password@host:5432/memorychain"
-   ```
+**Fix:**
+```ini
+# .npmrc
+link-workspace-packages=true
+shamefully-hoist=true
+strict-peer-dependencies=false
+auto-install-peers=true
+```
 
-3. Chạy lại:
-   ```bash
-   cd packages/db && npx prisma db push
-   ```
+Thêm `exports` vào `packages/db/package.json`:
+```json
+{
+  "exports": { ".": "./src/index.ts" }
+}
+```
 
-   Hoặc dùng Docker Compose đã có sẵn:
-   ```bash
-   docker-compose up -d
-   ```
-   *(PostgreSQL sẽ chạy tại `localhost:5432`, pgAdmin tại `http://localhost:5050`)*
+---
+
+### Fix 2 — Next.js 15: serverComponentsExternalPackages deprecated
+
+**Triệu chứng:** Warning hoặc lỗi config khi build.
+
+**Fix trong `next.config.js`:**
+```js
+// ❌ Cũ (Next.js 14)
+serverComponentsExternalPackages: ['@prisma/client']
+
+// ✅ Mới (Next.js 15)
+serverExternalPackages: ['@prisma/client', 'prisma']
+```
+
+---
+
+### Fix 3 — DATABASE_URL path lỗi khi chạy từ thư mục khác
+
+**Triệu chứng:** Prisma báo `Environment variable not found: DATABASE_URL`.
+
+**Nguyên nhân:** Dùng relative path `file:./dev.db` nhưng Prisma chạy từ thư mục khác.
+
+**Fix — dùng đường dẫn tuyệt đối:**
+```env
+# ✅ Đúng
+DATABASE_URL="file:/root/memorychain/packages/db/prisma/dev.db"
+
+# ⚠️ Có thể lỗi
+DATABASE_URL="file:./dev.db"
+```
+
+Hoặc truyền inline khi chạy lệnh:
+```bash
+DATABASE_URL="file:$(pwd)/prisma/dev.db" npx prisma db push
+```
+
+---
+
+### Fix 4 — node_modules missing / next: not found
+
+**Triệu chứng:** `sh: next: not found` khi chạy `pnpm dev`.
+
+**Fix:**
+```bash
+cd ~/memorychain
+rm -f pnpm-lock.yaml
+rm -rf node_modules apps/web/node_modules packages/db/node_modules
+pnpm install --no-frozen-lockfile
+```
 
 ---
 

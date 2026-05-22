@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['@prisma/client'],
-  },
+  // Next.js 15: renamed from serverComponentsExternalPackages
+  serverExternalPackages: ['@prisma/client', 'prisma'],
   images: {
     remotePatterns: [
       {
