@@ -1,0 +1,10 @@
+[package]
+name = "memory_chain"
+version = "1.0.0"
+
+[addresses]
+memory_chain = "_"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", type = "internal", rev = "main", subdir = "aptos-move/framework/aptos-framework" }
+AptosStdlib = { git = "https://github.com/aptos-labs/aptos-core.git", type = "internal", rev = "main", subdir = "aptos-move/framework/aptos-stdlib" }
