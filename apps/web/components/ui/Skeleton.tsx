@@ -11,8 +11,8 @@ export function Skeleton({ className }: SkeletonProps) {
 
 export function MemoryCardSkeleton() {
   return (
-    <div className="glass rounded-2xl overflow-hidden">
-      <Skeleton className="h-48 w-full rounded-none" />
+    <div className="card overflow-hidden p-0">
+      <Skeleton className="h-44 w-full rounded-none" />
       <div className="p-4 space-y-3">
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-3 w-1/2" />
@@ -24,16 +24,22 @@ export function MemoryCardSkeleton() {
 
 export function FamilyCardSkeleton() {
   return (
-    <div className="glass rounded-2xl p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <Skeleton className="w-12 h-12 rounded-xl" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-3 w-24" />
-        </div>
+    <div className="card p-4 sm:p-5 h-full flex flex-col">
+      <div className="h-28 w-full mb-3.5 rounded-lg overflow-hidden">
+        <Skeleton className="h-full w-full rounded-none" />
       </div>
-      <Skeleton className="h-3 w-full" />
-      <Skeleton className="h-3 w-2/3" />
+      <div className="flex-1 space-y-3">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-2/3" />
+      </div>
+      <div
+        className="pt-2.5 mt-4 flex justify-between"
+        style={{ borderTop: '1px solid var(--border)' }}
+      >
+        <Skeleton className="h-3 w-12" />
+        <Skeleton className="h-3 w-20" />
+      </div>
     </div>
   )
 }

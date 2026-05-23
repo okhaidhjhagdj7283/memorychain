@@ -8,9 +8,9 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import {
   Upload, ArrowLeft, Lock, Eye, Calendar, MapPin,
-  Tag, FileText, Loader2, CheckCircle, AlertCircle
+  Tag, FileText, Loader2, CheckCircle, AlertCircle, Globe,
 } from 'lucide-react'
-import { FamilySidebar } from '@/components/layout/Sidebar'
+import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/Button'
 import { useFamily } from '@/hooks/useFamilies'
 import { hashFile, encryptFile } from '@/lib/crypto'
@@ -42,6 +42,7 @@ export default function UploadMemoryPage({ params }: { params: Promise<{ id: str
   })
 
   const isEncrypted = watch('isEncrypted')
+  const visibility  = watch('visibility')
 
   const onDrop = useCallback((files: File[]) => {
     const file = files[0]
@@ -61,7 +62,7 @@ export default function UploadMemoryPage({ params }: { params: Promise<{ id: str
     try {
       setProgress({ stage: 'hashing', progress: 10, message: 'Tính hash file...' })
       const fileBytes = new Uint8Array(await selectedFile.arrayBuffer())
-      const fileHash = await hashFile(fileBytes)
+      void await hashFile(fileBytes)
 
       let uploadBytes = fileBytes
       let encryptedKey: string | undefined
@@ -70,9 +71,9 @@ export default function UploadMemoryPage({ params }: { params: Promise<{ id: str
       if (formData.isEncrypted) {
         setProgress({ stage: 'encrypting', progress: 30, message: 'Mã hóa file...' })
         const { encryptedBytes, keyBase64, ivBase64 } = await encryptFile(fileBytes)
-        uploadBytes = encryptedBytes
+        uploadBytes  = encryptedBytes
         encryptedKey = keyBase64
-        encryptedIv = ivBase64
+        encryptedIv  = ivBase64
       }
 
       setProgress({ stage: 'uploading', progress: 50, message: 'Upload lên Shelby...' })
@@ -109,127 +110,202 @@ export default function UploadMemoryPage({ params }: { params: Promise<{ id: str
 
   const isUploading = progress && progress.stage !== 'done' && progress.stage !== 'error'
 
+  const visibilityOptions = [
+    { value: 'PRIVATE', label: 'Riêng tư',  icon: Lock,  color: 'var(--amber)',        activeColor: 'rgba(245,158,11,0.08)',  activeBorder: 'rgba(245,158,11,0.25)' },
+    { value: 'FAMILY',  label: 'Gia đình',  icon: Eye,   color: 'var(--indigo-light)', activeColor: 'var(--indigo-dim)',      activeBorder: 'rgba(99,102,241,0.3)' },
+    { value: 'PUBLIC',  label: 'Công khai', icon: Globe,  color: 'var(--green)',        activeColor: 'var(--green-dim)',      activeBorder: 'rgba(34,197,94,0.25)' },
+  ]
+
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
-      <FamilySidebar familyId={id} familyName={family?.familyName} />
-      <main className="ml-60 pt-16">
-        <div className="max-w-3xl mx-auto px-8 py-8">
-          <Link href={`/family/${id}`} className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-8 no-underline transition-colors">
-            <ArrowLeft size={16} /> Quay lại vault
-          </Link>
-          <div className="mb-8">
-            <h1 className="font-display text-3xl font-bold text-white mb-2">Upload ký ức mới</h1>
-            <p className="text-slate-400">File sẽ được lưu lên Shelby Protocol và hash trên Aptos</p>
-          </div>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Dropzone */}
-            <div className="glass rounded-2xl p-6">
-              <label className="input-label mb-4 block">File ký ức *</label>
-              <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
-                <input {...getInputProps()} />
-                {selectedFile ? (
-                  <div className="space-y-2">
-                    <div className="text-4xl mb-2">
-                      {selectedFile.type.startsWith('image') ? '📷' : selectedFile.type.startsWith('video') ? '🎬' : selectedFile.type.startsWith('audio') ? '🎵' : '📄'}
-                    </div>
-                    <p className="font-semibold text-white">{selectedFile.name}</p>
-                    <p className="text-slate-400 text-sm">{formatBytes(selectedFile.size)}</p>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedFile(null) }} className="text-xs text-red-400 hover:text-red-300">Xóa file</button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <Upload size={40} className="text-indigo-400 mx-auto" />
-                    <p className="text-white font-semibold">{isDragActive ? 'Thả file vào đây...' : 'Kéo thả hoặc click để chọn file'}</p>
-                    <p className="text-slate-400 text-sm">Hỗ trợ: Ảnh, Video, Âm thanh, PDF, DOC (tối đa 100MB)</p>
-                  </div>
-                )}
-              </div>
-            </div>
+    <AppLayout familyId={id} familyName={family?.familyName}>
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 sm:py-7">
 
-            {/* Metadata */}
-            <div className="glass rounded-2xl p-6 space-y-4">
-              <label className="input-label block">Thông tin ký ức</label>
-              <div>
-                <label className="input-label">Tiêu đề *</label>
-                <input className="input" placeholder="Sinh nhật bả ba 70 tuổi..." {...register('title', { required: 'Bắt buộc' })} />
-                {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title.message}</p>}
-              </div>
-              <div>
-                <label className="input-label">Mô tả</label>
-                <textarea className="input resize-none" rows={3} placeholder="Ghi lại câu chuyện, cảm xúc..." {...register('description')} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="input-label flex items-center gap-1"><Calendar size={12} /> Ngày sự kiện</label>
-                  <input type="date" className="input" {...register('eventDate')} />
-                </div>
-                <div>
-                  <label className="input-label flex items-center gap-1"><MapPin size={12} /> Địa điểm</label>
-                  <input className="input" placeholder="Hà Nội, Việt Nam..." {...register('locationText')} />
-                </div>
-              </div>
-              <div>
-                <label className="input-label flex items-center gap-1"><Tag size={12} /> Tags (cách nhau bằng dấu phẩy)</label>
-                <input className="input" placeholder="gia đình, sinh nhật, 2024..." {...register('tags')} />
-              </div>
-            </div>
+        {/* Back link */}
+        <Link
+          href={`/family/${id}`}
+          className="inline-flex items-center gap-1.5 mb-5 no-underline transition-colors text-sm"
+          style={{ color: 'var(--text-3)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-1)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+        >
+          <ArrowLeft size={15} /> Quay lại vault
+        </Link>
 
-            {/* Privacy */}
-            <div className="glass rounded-2xl p-6">
-              <label className="input-label block mb-4">Quyền truy cập</label>
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                {[
-                  { value: 'PRIVATE', label: 'Riêng tư', icon: Lock, color: 'text-amber-400' },
-                  { value: 'FAMILY', label: 'Gia đình', icon: Eye, color: 'text-indigo-400' },
-                  { value: 'PUBLIC', label: 'Công khai', icon: FileText, color: 'text-emerald-400' },
-                ].map(opt => {
-                  const Icon = opt.icon
-                  const isSelected = watch('visibility') === opt.value
-                  return (
-                    <button key={opt.value} type="button" onClick={() => setValue('visibility', opt.value as FormData['visibility'])}
-                      className={`p-3 rounded-xl flex flex-col items-center gap-2 text-center transition-all border ${isSelected ? 'bg-indigo-500/15 border-indigo-500/40' : 'bg-white/2 border-white/5 hover:border-white/10'}`}>
-                      <Icon size={18} className={isSelected ? opt.color : 'text-slate-500'} />
-                      <span className={`text-xs font-medium ${isSelected ? 'text-white' : 'text-slate-400'}`}>{opt.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all"
-                style={{ background: isEncrypted ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isEncrypted ? 'rgba(245,158,11,0.25)' : 'rgba(255,255,255,0.06)'}` }}
-                onClick={() => setValue('isEncrypted', !isEncrypted)}>
-                <div className="flex items-center gap-3">
-                  <Lock size={18} className={isEncrypted ? 'text-amber-400' : 'text-slate-500'} />
-                  <div>
-                    <div className={`font-semibold text-sm ${isEncrypted ? 'text-white' : 'text-slate-400'}`}>Mã hóa file</div>
-                    <div className="text-xs text-slate-500">AES-256-GCM ngay trên trình duyệt</div>
-                  </div>
-                </div>
-                <div className={`w-11 h-6 rounded-full transition-all relative ${isEncrypted ? 'bg-amber-500' : 'bg-white/10'}`}>
-                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${isEncrypted ? 'left-6' : 'left-1'}`} />
-                </div>
-              </div>
-            </div>
-
-            {/* Progress */}
-            {progress && (
-              <div className="glass rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  {progress.stage === 'done' ? <CheckCircle size={20} className="text-emerald-400" /> :
-                   progress.stage === 'error' ? <AlertCircle size={20} className="text-red-400" /> :
-                   <Loader2 size={20} className="text-indigo-400 animate-spin" />}
-                  <span className="text-sm font-medium text-white">{progress.message}</span>
-                </div>
-                <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress.progress}%` }} /></div>
-              </div>
-            )}
-
-            <Button type="submit" loading={!!isUploading} disabled={!selectedFile} className="w-full" size="lg" icon={<Upload size={18} />}>
-              {isEncrypted ? 'Mã hóa & Upload lên Shelby' : 'Upload lên Shelby Protocol'}
-            </Button>
-          </form>
+        <div className="mb-5">
+          <h1 className="font-display text-xl sm:text-2xl font-bold mb-1" style={{ color: 'var(--text-1)' }}>
+            Upload ký ức mới
+          </h1>
+          <p className="text-sm" style={{ color: 'var(--text-2)' }}>
+            File sẽ được lưu lên Shelby Protocol và hash trên Aptos
+          </p>
         </div>
-      </main>
-    </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+
+          {/* ── Dropzone ───────────────────────────────── */}
+          <div className="card p-4 sm:p-5">
+            <label className="input-label mb-3 block">File ký ức *</label>
+            <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
+              <input {...getInputProps()} />
+              {selectedFile ? (
+                <div className="space-y-2">
+                  <div className="text-4xl mb-2">
+                    {selectedFile.type.startsWith('image') ? '📷'
+                      : selectedFile.type.startsWith('video') ? '🎬'
+                      : selectedFile.type.startsWith('audio') ? '🎵'
+                      : '📄'}
+                  </div>
+                  <p className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{selectedFile.name}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-2)' }}>{formatBytes(selectedFile.size)}</p>
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); setSelectedFile(null) }}
+                    className="text-xs transition-colors"
+                    style={{ color: 'var(--red)' }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = '0.75')}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                  >
+                    Xóa file
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Upload size={36} className="mx-auto" style={{ color: 'var(--indigo-light)' }} />
+                  <p className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
+                    {isDragActive ? 'Thả file vào đây…' : 'Kéo thả hoặc click để chọn file'}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-3)' }}>
+                    Hỗ trợ: Ảnh, Video, Âm thanh, PDF, DOC (tối đa 100MB)
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Metadata ───────────────────────────────── */}
+          <div className="card p-4 sm:p-5 space-y-4">
+            <label className="input-label block">Thông tin ký ức</label>
+            <div>
+              <label className="input-label">Tiêu đề *</label>
+              <input
+                className="input"
+                placeholder="Sinh nhật bà ba 70 tuổi…"
+                {...register('title', { required: 'Bắt buộc nhập tiêu đề' })}
+              />
+              {errors.title && <p className="text-xs mt-1" style={{ color: 'var(--red)' }}>{errors.title.message}</p>}
+            </div>
+            <div>
+              <label className="input-label">Mô tả</label>
+              <textarea
+                className="input resize-none"
+                rows={3}
+                placeholder="Ghi lại câu chuyện, cảm xúc…"
+                {...register('description')}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="input-label flex items-center gap-1"><Calendar size={11} /> Ngày sự kiện</label>
+                <input type="date" className="input" {...register('eventDate')} />
+              </div>
+              <div>
+                <label className="input-label flex items-center gap-1"><MapPin size={11} /> Địa điểm</label>
+                <input className="input" placeholder="Hà Nội, Việt Nam…" {...register('locationText')} />
+              </div>
+            </div>
+            <div>
+              <label className="input-label flex items-center gap-1"><Tag size={11} /> Tags (cách nhau bằng dấu phẩy)</label>
+              <input className="input" placeholder="gia đình, sinh nhật, 2024…" {...register('tags')} />
+            </div>
+          </div>
+
+          {/* ── Privacy ────────────────────────────────── */}
+          <div className="card p-4 sm:p-5">
+            <label className="input-label block mb-3">Quyền truy cập</label>
+            <div className="grid grid-cols-3 gap-2.5 mb-4">
+              {visibilityOptions.map(opt => {
+                const Icon = opt.icon
+                const isSelected = visibility === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setValue('visibility', opt.value as FormData['visibility'])}
+                    className="p-3 rounded-xl flex flex-col items-center gap-2 text-center transition-all"
+                    style={{
+                      background: isSelected ? opt.activeColor : 'transparent',
+                      border: `1px solid ${isSelected ? opt.activeBorder : 'var(--border)'}`,
+                    }}
+                  >
+                    <Icon size={17} style={{ color: isSelected ? opt.color : 'var(--text-3)' }} />
+                    <span
+                      className="text-xs font-medium leading-tight"
+                      style={{ color: isSelected ? 'var(--text-1)' : 'var(--text-3)' }}
+                    >
+                      {opt.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Encrypt toggle */}
+            <div
+              className="flex items-center justify-between p-3.5 rounded-xl cursor-pointer transition-all"
+              style={{
+                background: isEncrypted ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.025)',
+                border: `1px solid ${isEncrypted ? 'rgba(245,158,11,0.2)' : 'var(--border)'}`,
+              }}
+              onClick={() => setValue('isEncrypted', !isEncrypted)}
+            >
+              <div className="flex items-center gap-3">
+                <Lock size={16} style={{ color: isEncrypted ? 'var(--amber)' : 'var(--text-3)' }} />
+                <div>
+                  <div
+                    className="text-sm font-semibold"
+                    style={{ color: isEncrypted ? 'var(--text-1)' : 'var(--text-2)' }}
+                  >
+                    Mã hóa file
+                  </div>
+                  <div className="text-xs" style={{ color: 'var(--text-3)' }}>AES-256-GCM ngay trên trình duyệt</div>
+                </div>
+              </div>
+              <div className={`toggle ${isEncrypted ? 'active' : ''}`} style={{ background: isEncrypted ? 'var(--amber)' : undefined }}>
+                <div className="toggle-thumb" />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Progress ───────────────────────────────── */}
+          {progress && (
+            <div className="card p-4 sm:p-5 animate-fade-in">
+              <div className="flex items-center gap-3 mb-3">
+                {progress.stage === 'done'  ? <CheckCircle size={18} style={{ color: 'var(--green)' }} />  :
+                 progress.stage === 'error' ? <AlertCircle size={18} style={{ color: 'var(--red)' }}   />  :
+                 <Loader2 size={18} className="animate-spin" style={{ color: 'var(--indigo-light)' }} />}
+                <span className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>{progress.message}</span>
+                <span className="ml-auto text-xs font-mono" style={{ color: 'var(--text-3)' }}>
+                  {progress.progress}%
+                </span>
+              </div>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${progress.progress}%` }} />
+              </div>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            loading={!!isUploading}
+            disabled={!selectedFile}
+            className="w-full"
+            size="lg"
+            icon={<Upload size={17} />}
+          >
+            {isEncrypted ? 'Mã hóa & Upload lên Shelby' : 'Upload lên Shelby Protocol'}
+          </Button>
+        </form>
+      </div>
+    </AppLayout>
   )
 }

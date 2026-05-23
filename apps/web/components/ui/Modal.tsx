@@ -31,13 +31,14 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = '520px' }: 
         onClick={e => e.stopPropagation()}
       >
         {title && (
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-white">{title}</h2>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-bold" style={{ color: 'var(--text-1)' }}>{title}</h2>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
+              className="btn-icon"
+              aria-label="Đóng"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
         )}
